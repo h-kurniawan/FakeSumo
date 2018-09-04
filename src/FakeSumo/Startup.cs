@@ -22,7 +22,7 @@ namespace SumoLogicRateLimit
                 .AddJsonFormatters()
                 .AddDataAnnotations();
 
-            services.AddSingleton<ICounter, ShardedCounter>();
+            services.AddSingleton<IRequestQueue, RequestQueue>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

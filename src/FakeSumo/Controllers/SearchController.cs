@@ -13,27 +13,25 @@ namespace FakeSumo.Controllers
     [Route("api/v1/[controller]")]
     public class SearchController : Controller
     {
-        private const int MaxRequestCount = 2/*40*/;
         private const int TooManyRequestHttpCode = 429;
 
         private Random _random = new Random();
 
         private readonly ILogger _logger;
-        private readonly ICounter _counter;
+        private readonly IRequestQueue _requestQueue;
 
-
-        public SearchController(ILogger<SearchController> logger, ICounter counter)
+        public SearchController(ILogger<SearchController> logger, IRequestQueue requestQueue)
         {
             _logger = logger;
-            _counter = counter;
+            _requestQueue = requestQueue;
         }
 
         [HttpPost]
-        [Route("jobs", Name = "searchJobs")]
+        [Route("jobs", Name = "searchJob")]
         public async Task<IActionResult> Jobs(string query, long from, long to)
         {
             var searchLocation =
-                new Uri(new Uri($"{Url.RouteUrl("searchJobs", null, Request.Scheme, Request.Host.Value)}/"), Guid.NewGuid().ToString());
+                new Uri(new Uri($"{Url.RouteUrl("searchJob", null, Request.Scheme, Request.Host.Value)}/"), Guid.NewGuid().ToString());
 
             return await ProcessRequest(Accepted(searchLocation));
         }
@@ -44,7 +42,7 @@ namespace FakeSumo.Controllers
             var jobStatusResponse = new SumoJobStatusResponse()
             {
                 State = SumoJobStatusResponse.States[_random.Next(SumoJobStatusResponse.States.Count())],
-                MessageCount = _random.Next(200, 700)
+                MessageCount = _random.Next(200, 1000)
             };
 
             return await ProcessRequest(Ok(JsonConvert.SerializeObject(jobStatusResponse)));
@@ -72,28 +70,28 @@ namespace FakeSumo.Controllers
             return await ProcessRequest(Ok(JsonConvert.SerializeObject(messageResponse)));
         }
 
+        [HttpDelete, Route("jobs/{searchJobId:guid}", Name = "deleteSearchJob")]
+        public async Task<IActionResult> Delete(Guid searchJobId, int offset, int limit)
+        {
+            return await ProcessRequest(Ok());
+        }
+
         private async Task<IActionResult> ProcessRequest(IActionResult result)
         {
-            _counter.Increase(1);
-
-            try
+            var enqueuResponse = _requestQueue.Enqueue(Request);
+            if (enqueuResponse != EnqueueResponse.Added)
             {
-                if (_counter.Count > MaxRequestCount)
-                {
-                    var response = StatusCode(TooManyRequestHttpCode, $"Too many requests. Rate limit of {MaxRequestCount} is reached.");
-                    LogMessage(LogLevel.Error, response);
-                    return response;
-                }
-
-                await Task.Delay(_random.Next(500, 2000));
-                LogMessage(LogLevel.Information, result);
-
-                return result;
+                var response = 
+                    StatusCode(TooManyRequestHttpCode, $"Too many requests. {enqueuResponse} occured.");
+                LogMessage(LogLevel.Error, response);
+                return response;
             }
-            finally
-            {
-                _counter.Increase(-1);
-            }
+
+            await Task.Delay(_random.Next(500, 2000));
+            LogMessage(LogLevel.Information, result);
+            _requestQueue.Dequeu();
+
+            return result;
         }
 
         private void LogMessage(LogLevel logLevel, IActionResult actionResult)
@@ -118,7 +116,7 @@ namespace FakeSumo.Controllers
                     URI = Request.Path.Value,
                     StatusCode = statusCode,
                     Content = content,
-                    RequestCount = _counter.Count
+                    RequestCount = _requestQueue.ItemCount
                 });
             _logger.Log(logLevel, message);
         }
