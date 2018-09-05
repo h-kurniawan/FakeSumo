@@ -7,22 +7,6 @@ using System.Threading.Tasks;
 namespace FakeSumo.Services
 {
     /// <summary>
-    /// Implement the ICounterInterface using System.Threading.Interlocked
-    /// functions.
-    /// </summary>
-    public class InterlockedCounter : ICounter
-    {
-        private long _count = 0;
-
-        public long Count => Interlocked.CompareExchange(ref _count, 0, 0);
-
-        public void Increase(long amount)
-        {
-            Interlocked.Add(ref _count, amount);
-        }
-    }
-
-    /// <summary>
     /// Implement the ICounterInterface by creating thread-local counters
     /// fore each thread.
     /// </summary>

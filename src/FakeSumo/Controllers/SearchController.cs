@@ -33,10 +33,10 @@ namespace FakeSumo.Controllers
             var searchLocation =
                 new Uri(new Uri($"{Url.RouteUrl("searchJob", null, Request.Scheme, Request.Host.Value)}/"), Guid.NewGuid().ToString());
 
-            return await ProcessRequest(Accepted(searchLocation));
+            return await ProcessRequest(RequestQueueItem.ApiEndpoint.SearchJobRequest, Accepted(searchLocation));
         }
 
-        [Route("jobs/{searchJobId:guid}", Name = "getJobStatus")]
+        [HttpGet, Route("jobs/{searchJobId:guid}", Name = "getJobStatus")]
         public async Task<IActionResult> JobStatus(Guid searchJobId)
         {
             var jobStatusResponse = new SumoJobStatusResponse()
@@ -45,7 +45,9 @@ namespace FakeSumo.Controllers
                 MessageCount = _random.Next(200, 1000)
             };
 
-            return await ProcessRequest(Ok(JsonConvert.SerializeObject(jobStatusResponse)));
+            return await ProcessRequest(
+                RequestQueueItem.ApiEndpoint.GetJobStatus,
+                Ok(JsonConvert.SerializeObject(jobStatusResponse)));
         }
 
         [Route("jobs/{searchJobId:guid}/messages", Name = "getMessages")]
@@ -67,18 +69,21 @@ namespace FakeSumo.Controllers
             {
                 Messages = messages
             };
-            return await ProcessRequest(Ok(JsonConvert.SerializeObject(messageResponse)));
+            return await ProcessRequest(
+                RequestQueueItem.ApiEndpoint.GetMessage, 
+                Ok(JsonConvert.SerializeObject(messageResponse)));
         }
 
         [HttpDelete, Route("jobs/{searchJobId:guid}", Name = "deleteSearchJob")]
         public async Task<IActionResult> Delete(Guid searchJobId, int offset, int limit)
         {
-            return await ProcessRequest(Ok());
+            return await ProcessRequest(RequestQueueItem.ApiEndpoint.DeleteJobRequest, Ok());
         }
 
-        private async Task<IActionResult> ProcessRequest(IActionResult result)
+        private async Task<IActionResult> ProcessRequest(RequestQueueItem.ApiEndpoint endpoint, IActionResult result)
         {
-            var enqueuResponse = _requestQueue.Enqueue(Request);
+            var queueItem = new RequestQueueItem(Request, endpoint);
+            var enqueuResponse = _requestQueue.Enqueue(queueItem);
             if (enqueuResponse != EnqueueResponse.Added)
             {
                 var response = 

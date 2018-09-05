@@ -22,6 +22,7 @@ namespace SumoLogicRateLimit
                 .AddJsonFormatters()
                 .AddDataAnnotations();
 
+            services.AddSingleton<ICounter, InterlockedCounter>();
             services.AddSingleton<IRequestQueue, RequestQueue>();
         }
 

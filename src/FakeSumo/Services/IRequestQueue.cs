@@ -1,8 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using FakeSumo.Models;
 
 namespace FakeSumo.Services
 {
@@ -10,13 +6,14 @@ namespace FakeSumo.Services
     {
         Added,
         MaxRequestsPerSecondError,
-        MaxRequestsPerMinuteError
+        MaxRequestsPerMinuteError,
+        MaxSearchJobRequestError,
     }
 
     public interface IRequestQueue
     {
-        EnqueueResponse Enqueue(HttpRequest item);
-        HttpRequest Dequeu();
+        EnqueueResponse Enqueue(RequestQueueItem item);
+        RequestQueueItem Dequeu();
         int ItemCount { get; }
     }
 }

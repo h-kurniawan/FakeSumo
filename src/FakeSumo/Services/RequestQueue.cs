@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using FakeSumo.Models;
 
 namespace FakeSumo.Services
 {
@@ -8,59 +8,52 @@ namespace FakeSumo.Services
     {
         const int MaxRequestsPerSecond = 4;
         const int MaxRequestsPerMinute = 240;
+        const int MaxSearchJobRequest = 200;
 
-        class InternalQueueItem
+        private readonly ConcurrentQueue<RequestQueueItem> _apiQueue;
+        private ICounter _searchJobCounter;
+
+        public int ItemCount => _apiQueue.Count;
+
+        public RequestQueue(ICounter searchJobCounter)
         {
-            public InternalQueueItem(HttpRequest request, DateTimeOffset requestedAt)
-            {
-                Request = request;
-                RequestedAt = requestedAt;
-            }
-
-            public HttpRequest Request { get; }
-            public DateTimeOffset RequestedAt { get; }
+            _apiQueue = new ConcurrentQueue<RequestQueueItem>();
+            _searchJobCounter = searchJobCounter;
         }
 
-        private readonly ConcurrentQueue<InternalQueueItem> _queue;
-
-        public int ItemCount => _queue.Count;
-
-        public RequestQueue()
+        public EnqueueResponse Enqueue(RequestQueueItem queueItem)
         {
-            _queue = new ConcurrentQueue<InternalQueueItem>();
-        }
-
-        public EnqueueResponse Enqueue(HttpRequest request)
-        {
-            var requestedAt = DateTimeOffset.UtcNow;
-
-            var response = CanEnqueue(requestedAt);
+            var response = CanEnqueue(queueItem);
             if (response == EnqueueResponse.Added)
             {
-
-                var queueItem = new InternalQueueItem(request, requestedAt);
-                _queue.Enqueue(queueItem);
+                _apiQueue.Enqueue(queueItem);
+                if (queueItem.Endpoint == RequestQueueItem.ApiEndpoint.SearchJobRequest)
+                    _searchJobCounter.Increase(1);
             }
 
             return response;
         }
 
-        public HttpRequest Dequeu()
+        public RequestQueueItem Dequeu()
         {
-            _queue.TryDequeue(out var queueItem);
-            return queueItem.Request;
+            _apiQueue.TryDequeue(out var queueItem);
+
+            if (queueItem.Endpoint == RequestQueueItem.ApiEndpoint.DeleteJobRequest
+                && _searchJobCounter.Count > 0)
+                _searchJobCounter.Increase(-1);
+
+            return queueItem;
         }
 
-
-        private EnqueueResponse CanEnqueue(DateTimeOffset requestedAt)
+        private EnqueueResponse CanEnqueue(RequestQueueItem queueItem)
         {
-            if (_queue.IsEmpty)
+            if (_apiQueue.IsEmpty && _searchJobCounter.Count == 0)
                 return EnqueueResponse.Added;
 
-            var itemCount = _queue.Count;
-            _queue.TryPeek(out var firstItem);
+            var itemCount = _apiQueue.Count;
+            _apiQueue.TryPeek(out var firstItem);
 
-            var requestedAtUnixTimeSeconds = requestedAt.ToUnixTimeSeconds();
+            var requestedAtUnixTimeSeconds = queueItem.RequestedAt.ToUnixTimeSeconds();
             var firstItemUnixTimeSeconds = firstItem.RequestedAt.ToUnixTimeSeconds();
             var requestedAtUnixTimeMinutes = Math.Floor(requestedAtUnixTimeSeconds / 60D);
             var firstItemUnixTimeMinutes = Math.Floor(firstItemUnixTimeSeconds / 60D);
@@ -72,6 +65,10 @@ namespace FakeSumo.Services
             if (itemCount >= MaxRequestsPerMinute &&
                 requestedAtUnixTimeMinutes == firstItemUnixTimeMinutes)
                 return EnqueueResponse.MaxRequestsPerMinuteError;
+
+            if (queueItem.Endpoint == RequestQueueItem.ApiEndpoint.SearchJobRequest &&
+                _searchJobCounter.Count >= MaxSearchJobRequest)
+                return EnqueueResponse.MaxSearchJobRequestError;
 
             return EnqueueResponse.Added;
         }
