@@ -47,7 +47,7 @@ namespace FakeSumo.Services
 
         private EnqueueResponse CanEnqueue(RequestQueueItem queueItem)
         {
-            if (_apiQueue.IsEmpty && _searchJobCounter.Count == 0)
+            if (_apiQueue.IsEmpty && _searchJobCounter.Count < MaxSearchJobRequest)
                 return EnqueueResponse.Added;
 
             var itemCount = _apiQueue.Count;
