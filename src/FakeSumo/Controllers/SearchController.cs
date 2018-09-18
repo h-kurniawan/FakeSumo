@@ -39,9 +39,22 @@ namespace FakeSumo.Controllers
         [HttpGet, Route("jobs/{searchJobId:guid}", Name = "getJobStatus")]
         public async Task<IActionResult> JobStatus(Guid searchJobId)
         {
+            string jobState;
+            var randomNo = _random.Next(1, 10);
+            if (randomNo <= 4)
+                jobState = SumoJobStatusResponse.States[0];
+            else if (randomNo <= 7)
+                jobState = SumoJobStatusResponse.States[1];
+            else if (randomNo == 8)
+                jobState = SumoJobStatusResponse.States[2];
+            else if (randomNo == 9)
+                jobState = SumoJobStatusResponse.States[3];
+            else
+                jobState = SumoJobStatusResponse.States[4];
+
             var jobStatusResponse = new SumoJobStatusResponse()
             {
-                State = SumoJobStatusResponse.States[_random.Next(SumoJobStatusResponse.States.Count())],
+                State = jobState,
                 MessageCount = _random.Next(200, 1000)
             };
 
@@ -70,7 +83,7 @@ namespace FakeSumo.Controllers
                 Messages = messages
             };
             return await ProcessRequest(
-                RequestQueueItem.ApiEndpoint.GetMessage, 
+                RequestQueueItem.ApiEndpoint.GetMessage,
                 Ok(JsonConvert.SerializeObject(messageResponse)));
         }
 
@@ -86,7 +99,7 @@ namespace FakeSumo.Controllers
             var enqueuResponse = _requestQueue.Enqueue(queueItem);
             if (enqueuResponse != EnqueueResponse.Added)
             {
-                var response = 
+                var response =
                     StatusCode(TooManyRequestHttpCode, $"Too many requests. {enqueuResponse} occured.");
                 LogMessage(LogLevel.Error, response);
                 return response;

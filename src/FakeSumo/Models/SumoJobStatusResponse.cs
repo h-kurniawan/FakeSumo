@@ -5,7 +5,7 @@ namespace FakeSumo.Models
     public class SumoJobStatusResponse
     {
         public static readonly string[] States = new[] {
-            "NOT STARTED", "GATHERING RESULTS", "FORCE PAUSED", "DONE GATHERING RESULTS", "CANCELLED"
+            "GATHERING RESULTS", "DONE GATHERING RESULTS", "NOT STARTED", "FORCE PAUSED", "CANCELLED"
         };
 
         [JsonProperty("state")]
