@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using FakeSumo.Models;
 using FakeSumo.Services;
+using System.Net;
 
 namespace FakeSumo.Controllers
 {
@@ -33,7 +34,16 @@ namespace FakeSumo.Controllers
             var searchLocation =
                 new Uri(new Uri($"{Url.RouteUrl("searchJob", null, Request.Scheme, Request.Host.Value)}/"), Guid.NewGuid().ToString());
 
-            return await ProcessRequest(RequestQueueItem.ApiEndpoint.SearchJobRequest, Accepted(searchLocation));
+            var searchResponse = JsonConvert.SerializeObject(new
+            {
+                status = (int)HttpStatusCode.Accepted,
+                id = Guid.NewGuid(),
+                code = "",
+                message = ""
+            });
+
+            return await ProcessRequest(
+                RequestQueueItem.ApiEndpoint.SearchJobRequest, Accepted(searchLocation, searchResponse));
         }
 
         [HttpGet, Route("jobs/{searchJobId:guid}", Name = "getJobStatus")]
@@ -120,10 +130,7 @@ namespace FakeSumo.Controllers
             if (actionResult is ObjectResult objectResult)
             {
                 statusCode = objectResult.StatusCode.Value;
-                if (objectResult is AcceptedResult acceptedResult)
-                    content = acceptedResult.Location;
-                else
-                    content = objectResult.Value?.ToString();
+                content = objectResult.Value?.ToString();
             }
             else
                 statusCode = (actionResult as StatusCodeResult).StatusCode;
