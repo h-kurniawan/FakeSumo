@@ -34,12 +34,15 @@ namespace FakeSumo.Controllers
             var searchLocation =
                 new Uri(new Uri($"{Url.RouteUrl("searchJob", null, Request.Scheme, Request.Host.Value)}/"), Guid.NewGuid().ToString());
 
-            var searchResponse = JsonConvert.SerializeObject(new
+
+            var searchResponse = JsonConvert.SerializeObject(new SumoJobSearchResponse
             {
-                status = (int)HttpStatusCode.Accepted,
-                id = Guid.NewGuid(),
-                code = "",
-                message = ""
+                Id = Guid.NewGuid().ToString(),
+                Link = new SumoJobSearchResponse.HypermediaLink
+                {
+                    Rel = "self",
+                    SearchLocation = searchLocation.AbsoluteUri
+                }
             });
 
             return await ProcessRequest(
