@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using FakeSumo.Models;
+using FakeSumo.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using FakeSumo.Models;
-using FakeSumo.Services;
-using System.Net;
 
 namespace FakeSumo.Controllers
 {
+    [Produces("application/json")]
     [Route("api/v1/[controller]")]
     public class SearchController : Controller
     {
@@ -34,16 +33,14 @@ namespace FakeSumo.Controllers
             var searchLocation =
                 new Uri(new Uri($"{Url.RouteUrl("searchJob", null, Request.Scheme, Request.Host.Value)}/"), Guid.NewGuid().ToString());
 
-
-            var searchResponse = JsonConvert.SerializeObject(new SumoJobSearchResponse
-            {
+            var searchResponse = new SumoJobSearchResponse {
                 Id = Guid.NewGuid().ToString(),
                 Link = new SumoJobSearchResponse.HypermediaLink
                 {
                     Rel = "self",
                     SearchLocation = searchLocation.AbsoluteUri
                 }
-            });
+            };
 
             return await ProcessRequest(
                 RequestQueueItem.ApiEndpoint.SearchJobRequest, Accepted(searchLocation, searchResponse));
@@ -73,7 +70,7 @@ namespace FakeSumo.Controllers
 
             return await ProcessRequest(
                 RequestQueueItem.ApiEndpoint.GetJobStatus,
-                Ok(JsonConvert.SerializeObject(jobStatusResponse)));
+                Ok(jobStatusResponse));
         }
 
         [Route("jobs/{searchJobId:guid}/messages", Name = "getMessages")]
@@ -97,7 +94,7 @@ namespace FakeSumo.Controllers
             };
             return await ProcessRequest(
                 RequestQueueItem.ApiEndpoint.GetMessage,
-                Ok(JsonConvert.SerializeObject(messageResponse)));
+                Ok(messageResponse));
         }
 
         [HttpDelete, Route("jobs/{searchJobId:guid}", Name = "deleteSearchJob")]
