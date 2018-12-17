@@ -107,7 +107,7 @@ namespace FakeSumo.Controllers
         {
             var queueItem = new RequestQueueItem(Request, endpoint);
             var enqueuResponse = _requestQueue.Enqueue(queueItem);
-            if (enqueuResponse != EnqueueResponse.Added)
+            if (enqueuResponse != EnqueueResponse.Ok)
             {
                 var response =
                     StatusCode(TooManyRequestHttpCode, $"Too many requests. {enqueuResponse} occured.");

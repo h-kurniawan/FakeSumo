@@ -4,7 +4,7 @@ namespace FakeSumo.Services
 {
     public enum EnqueueResponse
     {
-        Added,
+        Ok,
         MaxRequestsPerSecondError,
         MaxRequestsPerMinuteError,
         MaxSearchJobRequestError,

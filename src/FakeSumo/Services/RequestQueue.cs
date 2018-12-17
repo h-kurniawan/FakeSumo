@@ -24,7 +24,7 @@ namespace FakeSumo.Services
         public EnqueueResponse Enqueue(RequestQueueItem queueItem)
         {
             var response = CanEnqueue(queueItem);
-            if (response == EnqueueResponse.Added)
+            if (response == EnqueueResponse.Ok)
             {
                 _apiQueue.Enqueue(queueItem);
                 if (queueItem.Endpoint == RequestQueueItem.ApiEndpoint.SearchJobRequest)
@@ -48,15 +48,18 @@ namespace FakeSumo.Services
         private EnqueueResponse CanEnqueue(RequestQueueItem queueItem)
         {
             if (_apiQueue.IsEmpty && _searchJobCounter.Count < MaxSearchJobRequest)
-                return EnqueueResponse.Added;
+                return EnqueueResponse.Ok;
 
-            var itemCount = _apiQueue.Count;
             _apiQueue.TryPeek(out var firstItem);
+            if (firstItem == null)
+                return EnqueueResponse.Ok;
 
             var requestedAtUnixTimeSeconds = queueItem.RequestedAt.ToUnixTimeSeconds();
             var firstItemUnixTimeSeconds = firstItem.RequestedAt.ToUnixTimeSeconds();
             var requestedAtUnixTimeMinutes = Math.Floor(requestedAtUnixTimeSeconds / 60D);
             var firstItemUnixTimeMinutes = Math.Floor(firstItemUnixTimeSeconds / 60D);
+
+            var itemCount = _apiQueue.Count;
 
             if (itemCount >= MaxRequestsPerSecond &&
                 requestedAtUnixTimeSeconds == firstItemUnixTimeSeconds)
@@ -70,7 +73,7 @@ namespace FakeSumo.Services
                 _searchJobCounter.Count >= MaxSearchJobRequest)
                 return EnqueueResponse.MaxSearchJobRequestError;
 
-            return EnqueueResponse.Added;
+            return EnqueueResponse.Ok;
         }
     }
 }
